@@ -11,4 +11,4 @@ store_app.include_router(cifar.cifar_router)
 
 
 if __name__ == '__main__':
-    uvicorn.run(store_app,host='127.0.0.1',port=8000)
+    uvicorn.run(store_app,host='127.0.0.1',port=8005)

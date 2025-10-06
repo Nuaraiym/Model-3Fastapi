@@ -1,11 +1,30 @@
-from fastapi import FastAPI,APIRouter,UploadFile,File,HTTPException
+from fastapi import FastAPI,UploadFile,File,HTTPException
 import io
 import torch
 from torchvision import transforms
 import torch.nn as nn
 from PIL import Image
+from store_app.db import models
+from store_app.db.database import SessionLocal
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
 
 fashion_router = APIRouter(prefix='/fashion',tags=['Fashion'])
+
+
+async def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+classes = [
+    'T-shirt/top','Trouser','Pullover','Dress',
+    'Coat','Sandal','Shirt','Sneaker','Bag','Ankle boot'
+]
 
 class CheckImage(nn.Module):
   def __init__(self):
@@ -41,12 +60,9 @@ model.load_state_dict(torch.load('model (1).pth',map_location=device))
 model.to(device)
 model.eval()
 
-classes = [
-    'T-shirt/top','Trouser','Pullover','Dress',
-    'Coat','Sandal','Shirt','Sneaker','Bag','Ankle boot'
-]
-@check_image_app.post('fashion/predict/')
-async def check_image(file: UploadFile = File(...)):
+
+@fashion_router.post('fashion/predict')
+async def check_image(file: UploadFile = File(...),db: Session = Depends(get_db)):
     try:
         image_data = await file.read()
 
@@ -60,6 +76,11 @@ async def check_image(file: UploadFile = File(...)):
             y_pred = model(img_tensor)
             pred = y_pred.argmax(dim=1).item()
             class_name = classes[pred]
+
+            db_fashion = models.Fashion(image=image_data, predict=class_name)
+            db.add(db_fashion)
+            db.commit()
+            db.refresh(db_fashion)
 
         return {'Answer': pred, 'Название одежды': class_name}
 

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from torchvision import transforms
 import torch.nn as nn
 from PIL import Image
-from store_app.db import models
+from store_app.db.models import Mnist
 from store_app.db.database import SessionLocal
 
 
@@ -48,7 +48,7 @@ transform = transforms.Compose({
     transforms.ToTensor()
 })
 
-check_image_app = FastAPI()
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = CheckImage()
 model.load_state_dict(torch.load('model.pth',map_location=device))
@@ -70,7 +70,7 @@ async  def check_image(file: UploadFile = File(...),db: Session = Depends(get_db
             y_pred = model(img_tensor)
             pred = y_pred.argmax(dim=1).item()
 
-            db_mnist = models.Mnist(image=image_data, predict=pred)
+            db_mnist = Mnist(image=image_data, class_number=pred)
             db.add(db_mnist)
             db.commit()
             db.refresh(db_mnist)

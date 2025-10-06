@@ -4,7 +4,7 @@ import torch
 from torchvision import transforms
 import torch.nn as nn
 from PIL import Image
-from store_app.db import models
+from store_app.db.models import Fashion
 from store_app.db.database import SessionLocal
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -77,7 +77,7 @@ async def check_image(file: UploadFile = File(...),db: Session = Depends(get_db)
             pred = y_pred.argmax(dim=1).item()
             class_name = classes[pred]
 
-            db_fashion = models.Fashion(image=image_data, predict=class_name)
+            db_fashion = Fashion(image=image_data, class_name=class_name)
             db.add(db_fashion)
             db.commit()
             db.refresh(db_fashion)

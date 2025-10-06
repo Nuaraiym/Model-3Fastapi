@@ -5,7 +5,7 @@ from torch.xpu import device
 from torchvision import transforms
 import torch.nn as nn
 from PIL import Image
-from store_app.db import models
+from store_app.db.models import Cifar
 from store_app.db.database import SessionLocal
 from sqlalchemy.orm import Session
 
@@ -21,8 +21,15 @@ async def get_db():
     finally:
         db.close()
 
-label = ['airplane','automobile','bird','cat',
- 'deer','dog','frog','horse','ship','truck']
+label = ['airplane',
+         'automobile',
+         'bird','cat',
+         'deer',
+         'dog',
+         'frog',
+         'horse',
+         'ship',
+         'truck']
 
 class CifarClassifaction(nn.Module):
   def __init__(self):
@@ -72,19 +79,21 @@ async def check_image(file: UploadFile = File(...),db: Session = Depends(get_db)
         if not data:
             raise HTTPException(status_code=400,detail='File not')
 
-        img = Image.open(io.BytesIO(data))
-        img_tensor = transform(img).unsqeeze(0).to(device)
+        img = Image.open(io.BytesIO(data)).convert('RGB')
+        img_tensor = transform(img).unsqueeze(0).to(device)
+
 
         with torch.no_grad():
             pred = model(img_tensor)
-            result = pred.argmax(dim=1).item()
+            result = torch.argmax(pred, dim=1).item()
+            lable_name = label[result]
 
-            db_cifar = models.Cifar( image=data, predict=result)
+            db_cifar = Cifar( image=data, label_name=lable_name)
             db.add(db_cifar)
             db.commit()
             db.refresh(db_cifar)
 
-        return {'class': label[result]}
+        return {'class': lable_name}
 
     except Exception as e:
         raise HTTPException(status_code=500,detail=str(e))
